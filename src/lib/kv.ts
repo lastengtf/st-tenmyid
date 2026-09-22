@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 
+export type AccessMode = "redirect" | "embed";
+
 export interface WebApp {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ export interface WebApp {
   category: string;
   icon: string;
   isActive: boolean;
+  accessMode: AccessMode;
   sortOrder: number;
   clicksCount: number;
   createdAt: string;
@@ -48,6 +51,7 @@ const INITIAL_APPS: WebApp[] = [
     category: "Jadwal & Kuliah",
     icon: "Calendar",
     isActive: true,
+    accessMode: "redirect",
     sortOrder: 1,
     clicksCount: 42,
     createdAt: new Date().toISOString(),
@@ -63,6 +67,7 @@ const INITIAL_APPS: WebApp[] = [
     category: "Lab & Praktikum",
     icon: "Cpu",
     isActive: true,
+    accessMode: "embed",
     sortOrder: 2,
     clicksCount: 28,
     createdAt: new Date().toISOString(),
@@ -78,6 +83,7 @@ const INITIAL_APPS: WebApp[] = [
     category: "Akademik",
     icon: "BookOpen",
     isActive: true,
+    accessMode: "redirect",
     sortOrder: 3,
     clicksCount: 65,
     createdAt: new Date().toISOString(),
@@ -93,6 +99,7 @@ const INITIAL_APPS: WebApp[] = [
     category: "Tugas & Proyek",
     icon: "FolderKanban",
     isActive: true,
+    accessMode: "embed",
     sortOrder: 4,
     clicksCount: 19,
     createdAt: new Date().toISOString(),
@@ -108,6 +115,7 @@ const INITIAL_APPS: WebApp[] = [
     category: "Resource & Tools",
     icon: "Wrench",
     isActive: true,
+    accessMode: "redirect",
     sortOrder: 5,
     clicksCount: 37,
     createdAt: new Date().toISOString(),
@@ -225,26 +233,46 @@ export async function getAllApps(): Promise<WebApp[]> {
     }
     return INITIAL_APPS;
   }
-  return apps.sort((a, b) => a.sortOrder - b.sortOrder);
+  return apps
+    .map((app) => ({
+      ...app,
+      accessMode: app.accessMode || "redirect",
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function getAppBySlug(slug: string): Promise<WebApp | null> {
   const normalizedSlug = slug.toLowerCase().trim();
   const directApp = await kv.get<WebApp>(`app:slug:${normalizedSlug}`);
-  if (directApp) return directApp;
+  if (directApp) {
+    return {
+      ...directApp,
+      accessMode: directApp.accessMode || "redirect",
+    };
+  }
 
   const allApps = await getAllApps();
   const found = allApps.find((a) => a.slug.toLowerCase() === normalizedSlug);
   if (found) {
-    await kv.put(`app:slug:${normalizedSlug}`, found);
-    return found;
+    const normalizedFound: WebApp = {
+      ...found,
+      accessMode: found.accessMode || "redirect",
+    };
+    await kv.put(`app:slug:${normalizedSlug}`, normalizedFound);
+    return normalizedFound;
   }
   return null;
 }
 
-export async function saveApp(appData: Omit<WebApp, "id" | "clicksCount" | "createdAt" | "updatedAt"> & { id?: string }): Promise<WebApp> {
+export async function saveApp(
+  appData: Omit<WebApp, "id" | "clicksCount" | "createdAt" | "updatedAt"> & {
+    id?: string;
+  }
+): Promise<WebApp> {
   const allApps = await getAllApps();
   const now = new Date().toISOString();
+  const accessMode: AccessMode =
+    appData.accessMode === "embed" ? "embed" : "redirect";
 
   if (appData.id) {
     const index = allApps.findIndex((a) => a.id === appData.id);
@@ -260,6 +288,7 @@ export async function saveApp(appData: Omit<WebApp, "id" | "clicksCount" | "crea
       category: appData.category,
       icon: appData.icon || "ExternalLink",
       isActive: appData.isActive,
+      accessMode,
       sortOrder: Number(appData.sortOrder) || 0,
       updatedAt: now,
     };
@@ -289,6 +318,7 @@ export async function saveApp(appData: Omit<WebApp, "id" | "clicksCount" | "crea
       category: appData.category || "Umum",
       icon: appData.icon || "ExternalLink",
       isActive: appData.isActive ?? true,
+      accessMode,
       sortOrder: Number(appData.sortOrder) || allApps.length + 1,
       clicksCount: 0,
       createdAt: now,
@@ -327,7 +357,10 @@ export async function toggleAppStatus(id: string, isActive: boolean): Promise<We
   return allApps[index];
 }
 
-export async function recordAppClick(app: WebApp, logMeta: { ip: string; userAgent: string; referer: string }): Promise<void> {
+export async function recordAppClick(
+  app: WebApp,
+  logMeta: { ip: string; userAgent: string; referer: string }
+): Promise<void> {
   const now = new Date().toISOString();
 
   // Increment clicks in apps:list

@@ -16,26 +16,21 @@ import {
   Activity,
   MousePointerClick,
   CheckCircle,
-  XCircle,
   RotateCcw,
   Search,
   Eye,
-  Calendar,
-  Cpu,
-  BookOpen,
-  FolderKanban,
-  Wrench,
-  Database,
-  Code,
-  Compass,
-  Terminal,
-  Rocket,
-  Layers,
-  Sparkles,
+  Zap,
+  Monitor,
   Loader2
 } from "lucide-react";
-import { WebApp, AccessLog, StatsSummary } from "@/lib/kv";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { WebApp, AccessLog, StatsSummary, AccessMode } from "@/lib/kv";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +55,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { IconRenderer } from "@/components/portal/icon-renderer";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const AVAILABLE_ICONS = [
   "Calendar",
@@ -114,6 +110,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [category, setCategory] = useState<string>("Akademik");
   const [icon, setIcon] = useState<string>("Calendar");
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [accessMode, setAccessMode] = useState<AccessMode>("redirect");
   const [sortOrder, setSortOrder] = useState<number>(1);
 
   // Fetch initial data
@@ -158,6 +155,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setCategory("Akademik");
     setIcon("Calendar");
     setIsActive(true);
+    setAccessMode("redirect");
     setSortOrder(apps.length + 1);
     setFormError(null);
     setIsModalOpen(true);
@@ -172,6 +170,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setCategory(app.category);
     setIcon(app.icon || "ExternalLink");
     setIsActive(app.isActive);
+    setAccessMode(app.accessMode || "redirect");
     setSortOrder(app.sortOrder);
     setFormError(null);
     setIsModalOpen(true);
@@ -192,6 +191,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         category,
         icon,
         isActive,
+        accessMode,
         sortOrder,
       };
 
@@ -232,9 +232,8 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         body: JSON.stringify({ id: app.id, isActive: newStatus }),
       });
       if (!res.ok) {
-        await fetchData(); // rollback on error
+        await fetchData();
       } else {
-        // Refresh stats
         const statsRes = await fetch("/api/admin/stats");
         const statsData = await statsRes.json();
         if (statsData.stats) setStats(statsData.stats);
@@ -306,39 +305,41 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   });
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-150">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center space-x-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted">
+        <div className="container mx-auto flex h-14 items-center justify-between px-3 sm:px-6">
+          <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
               <GraduationCap className="h-4 w-4 text-foreground" />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold tracking-tight text-foreground">
+            <div className="flex flex-col truncate">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-xs sm:text-sm font-semibold tracking-tight text-foreground">
                   st.ten.my.id
                 </span>
-                <Badge variant="outline" className="text-[10px] font-normal">
-                  Admin Panel
+                <Badge variant="outline" className="text-[9px] sm:text-[10px] font-normal px-1 py-0">
+                  Admin
                 </Badge>
               </div>
-              <span className="text-[11px] text-muted-foreground">{adminEmail}</span>
+              <span className="truncate text-[10px] sm:text-[11px] text-muted-foreground">{adminEmail}</span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Button asChild variant="outline" size="sm" className="gap-1 text-xs">
+          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+            <ThemeToggle />
+
+            <Button asChild variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
               <Link href="/" target="_blank">
                 <Eye className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Pratinjau Portal</span>
+                <span className="hidden sm:inline">Portal</span>
               </Link>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="h-8 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={handleLogout}
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -349,21 +350,21 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       </header>
 
       {/* Main Content Area */}
-      <main className="container mx-auto flex-1 px-4 py-6 sm:px-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <main className="container mx-auto flex-1 px-3 py-4 sm:px-6 sm:py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabsList className="grid w-full grid-cols-3 sm:w-auto">
-              <TabsTrigger value="statistik" className="gap-1.5 text-xs">
+              <TabsTrigger value="statistik" className="gap-1 text-xs">
                 <BarChart3 className="h-3.5 w-3.5" />
                 <span>Statistik</span>
               </TabsTrigger>
-              <TabsTrigger value="apps" className="gap-1.5 text-xs">
+              <TabsTrigger value="apps" className="gap-1 text-xs">
                 <Globe className="h-3.5 w-3.5" />
                 <span>Web / Apps</span>
               </TabsTrigger>
-              <TabsTrigger value="logs" className="gap-1.5 text-xs">
+              <TabsTrigger value="logs" className="gap-1 text-xs">
                 <ListFilter className="h-3.5 w-3.5" />
-                <span>Log Pengunjung</span>
+                <span>Log</span>
               </TabsTrigger>
             </TabsList>
 
@@ -371,7 +372,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1 text-xs"
+                className="gap-1 text-xs h-8"
                 onClick={fetchData}
                 disabled={loading}
               >
@@ -382,7 +383,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 <Button
                   variant="default"
                   size="sm"
-                  className="gap-1 text-xs"
+                  className="gap-1 text-xs h-8"
                   onClick={openAddModal}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -393,17 +394,17 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
 
           {/* TAB 1: STATISTIK */}
-          <TabsContent value="statistik" className="space-y-6">
+          <TabsContent value="statistik" className="space-y-4 sm:space-y-6">
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
               <Card className="border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 sm:p-6">
                   <CardTitle className="text-xs font-medium text-muted-foreground">
                     Total Web / Apps
                   </CardTitle>
                   <Globe className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl font-bold tracking-tight text-foreground">
                     {stats?.totalApps ?? apps.length}
                   </div>
@@ -414,13 +415,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               </Card>
 
               <Card className="border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 sm:p-6">
                   <CardTitle className="text-xs font-medium text-muted-foreground">
                     Aplikasi Aktif
                   </CardTitle>
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl font-bold tracking-tight text-foreground">
                     {stats?.activeApps ?? apps.filter((a) => a.isActive).length}
                   </div>
@@ -431,30 +432,30 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               </Card>
 
               <Card className="border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 sm:p-6">
                   <CardTitle className="text-xs font-medium text-muted-foreground">
-                    Total Direct Access
+                    Total Kunjungan / Hits
                   </CardTitle>
                   <MousePointerClick className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl font-bold tracking-tight text-foreground">
                     {stats?.totalClicks ?? 0}
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Akumulasi klik & direct redirect
+                    Akumulasi klik direct & embed
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border-border">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 sm:p-6">
                   <CardTitle className="text-xs font-medium text-muted-foreground">
                     Kunjungan Hari Ini
                   </CardTitle>
                   <Activity className="h-4 w-4 text-foreground" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl font-bold tracking-tight text-foreground">
                     {stats?.clicksToday ?? 0}
                   </div>
@@ -466,18 +467,18 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </div>
 
             {/* Performance Rankings & Category Distribution */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
               {/* App Performance Ranking */}
               <Card className="border-border lg:col-span-2">
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="text-sm font-semibold">
                     Performa Akses per Web / App
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Peringkat frekuensi akses direct path <code className="text-foreground">/:slug</code> oleh mahasiswa & publik.
+                    Peringkat frekuensi akses path <code className="text-foreground">/:slug</code> oleh mahasiswa & publik.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                   {apps.length === 0 ? (
                     <div className="py-8 text-center text-xs text-muted-foreground">
                       Belum ada aplikasi yang terdaftar.
@@ -495,11 +496,11 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                           return (
                             <div key={app.id} className="space-y-1.5">
                               <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-foreground">{app.name}</span>
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <span className="font-medium text-foreground truncate">{app.name}</span>
                                   <span className="font-mono text-muted-foreground">/{app.slug}</span>
                                 </div>
-                                <div className="flex items-center gap-2 font-mono text-xs">
+                                <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
                                   <span className="font-semibold text-foreground">
                                     {app.clicksCount || 0}
                                   </span>
@@ -522,7 +523,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
               {/* Category Breakdown */}
               <Card className="border-border">
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="text-sm font-semibold">
                     Distribusi Kategori
                   </CardTitle>
@@ -530,14 +531,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                     Komposisi kelompok web/app perkuliahan.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                  <div className="space-y-2.5">
                     {stats?.categoryDistribution &&
                     Object.keys(stats.categoryDistribution).length > 0 ? (
                       Object.entries(stats.categoryDistribution).map(([cat, count]) => (
                         <div
                           key={cat}
-                          className="flex items-center justify-between rounded-md border border-border p-2.5 text-xs"
+                          className="flex items-center justify-between rounded-md border border-border p-2 text-xs"
                         >
                           <span className="font-medium text-foreground">{cat}</span>
                           <Badge variant="secondary" className="font-mono text-xs">
@@ -559,14 +560,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           {/* TAB 2: WEB / APPS CRUD */}
           <TabsContent value="apps" className="space-y-4">
             <Card className="border-border">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle className="text-sm font-semibold">
                       Manajemen Web / Apps
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Kelola daftar aplikasi perkuliahan, pengaturan direct path, URL tujuan, dan status aktif.
+                      Atur nama, direct path, mode akses (Redirect / Tetap di Path), dan status aktif.
                     </CardDescription>
                   </div>
 
@@ -575,7 +576,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                     <Input
                       type="text"
                       placeholder="Cari web/app..."
-                      className="pl-9 text-xs"
+                      className="pl-9 text-xs h-8"
                       value={appSearch}
                       onChange={(e) => setAppSearch(e.target.value)}
                     />
@@ -584,108 +585,124 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               </CardHeader>
 
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 text-center">Urutan</TableHead>
-                      <TableHead>Aplikasi</TableHead>
-                      <TableHead>Direct Path</TableHead>
-                      <TableHead>URL Tujuan</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-right">Total Klik</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredApps.length === 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={8} className="py-8 text-center text-xs text-muted-foreground">
-                          Tidak ada aplikasi yang sesuai.
-                        </TableCell>
+                        <TableHead className="w-12 text-center">No</TableHead>
+                        <TableHead>Aplikasi</TableHead>
+                        <TableHead>Direct Path</TableHead>
+                        <TableHead>Mode Akses</TableHead>
+                        <TableHead className="hidden md:table-cell">URL Target</TableHead>
+                        <TableHead className="hidden sm:table-cell">Kategori</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-right">Klik</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
-                    ) : (
-                      filteredApps.map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                            {app.sortOrder}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
-                                <IconRenderer name={app.icon} className="h-4 w-4 text-foreground" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-medium text-foreground">{app.name}</span>
-                                <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                                  {app.description}
-                                </span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Link
-                              href={`/${app.slug}`}
-                              target="_blank"
-                              className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-foreground hover:underline"
-                            >
-                              <span>/{app.slug}</span>
-                              <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                            </Link>
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                            <a
-                              href={app.targetUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hover:underline"
-                            >
-                              {app.targetUrl}
-                            </a>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-[11px]">
-                              {app.category}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center">
-                              <Switch
-                                checked={app.isActive}
-                                onCheckedChange={() => handleToggleStatus(app)}
-                                aria-label="Toggle aktifasi"
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-xs font-semibold">
-                            {app.clicksCount || 0}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                onClick={() => openEditModal(app)}
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => handleDeleteApp(app.id)}
-                                disabled={isDeleting === app.id}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredApps.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="py-8 text-center text-xs text-muted-foreground">
+                            Tidak ada aplikasi yang sesuai.
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        filteredApps.map((app) => (
+                          <TableRow key={app.id}>
+                            <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                              {app.sortOrder}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+                                  <IconRenderer name={app.icon} className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-foreground" />
+                                </div>
+                                <div className="flex flex-col min-w-[120px]">
+                                  <span className="font-medium text-foreground text-xs sm:text-sm">{app.name}</span>
+                                  <span className="line-clamp-1 text-[10px] sm:text-[11px] text-muted-foreground">
+                                    {app.description}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Link
+                                href={`/${app.slug}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-foreground hover:underline whitespace-nowrap"
+                              >
+                                <span>/{app.slug}</span>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                              </Link>
+                            </TableCell>
+                            <TableCell>
+                              {app.accessMode === "embed" ? (
+                                <Badge variant="secondary" className="gap-1 text-[10px] whitespace-nowrap">
+                                  <Monitor className="h-2.5 w-2.5" />
+                                  <span>Tetap di Path</span>
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1 text-[10px] whitespace-nowrap">
+                                  <Zap className="h-2.5 w-2.5" />
+                                  <span>Direct Redirect</span>
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell max-w-[180px] truncate text-xs text-muted-foreground">
+                              <a
+                                href={app.targetUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hover:underline"
+                              >
+                                {app.targetUrl}
+                              </a>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <Badge variant="outline" className="text-[10px] sm:text-[11px]">
+                                {app.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center">
+                                <Switch
+                                  checked={app.isActive}
+                                  onCheckedChange={() => handleToggleStatus(app)}
+                                  aria-label="Toggle aktifasi"
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs font-semibold">
+                              {app.clicksCount || 0}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-muted-foreground hover:text-foreground"
+                                  onClick={() => openEditModal(app)}
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => handleDeleteApp(app.id)}
+                                  disabled={isDeleting === app.id}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -693,14 +710,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           {/* TAB 3: LOG PENGUNJUNG */}
           <TabsContent value="logs" className="space-y-4">
             <Card className="border-border">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle className="text-sm font-semibold">
                       Log Aktivitas Kunjungan
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Rekaman jejak pengunjung yang mengakses direct path <code className="text-foreground">/:slug</code>.
+                      Rekaman jejak pengunjung yang mengakses path <code className="text-foreground">/:slug</code>.
                     </CardDescription>
                   </div>
 
@@ -721,71 +738,71 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="gap-1 text-xs h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       onClick={handleClearLogs}
                       disabled={logs.length === 0}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                      <span>Kosongkan Log</span>
+                      <span className="hidden sm:inline">Kosongkan</span>
                     </Button>
                   </div>
                 </div>
               </CardHeader>
 
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Waktu Akses</TableHead>
-                      <TableHead>Path / Slug</TableHead>
-                      <TableHead>Target Redirect</TableHead>
-                      <TableHead>IP Pengunjung</TableHead>
-                      <TableHead>Browser / User Agent</TableHead>
-                      <TableHead>Referer</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLogs.length === 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
-                          Belum ada aktivitas kunjungan yang tercatat.
-                        </TableCell>
+                        <TableHead>Waktu</TableHead>
+                        <TableHead>Path</TableHead>
+                        <TableHead className="hidden md:table-cell">Target URL</TableHead>
+                        <TableHead>IP</TableHead>
+                        <TableHead className="hidden sm:table-cell">Browser</TableHead>
+                        <TableHead className="hidden lg:table-cell">Referer</TableHead>
                       </TableRow>
-                    ) : (
-                      filteredLogs.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                            {new Date(log.timestamp).toLocaleString("id-ID", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              second: "2-digit",
-                            })}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="font-mono text-xs">
-                              /{log.slug}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                            {log.targetUrl}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs text-muted-foreground">
-                            {log.ip}
-                          </TableCell>
-                          <TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
-                            {log.userAgent}
-                          </TableCell>
-                          <TableCell className="max-w-[150px] truncate text-xs text-muted-foreground">
-                            {log.referer}
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLogs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                            Belum ada aktivitas kunjungan yang tercatat.
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        filteredLogs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleString("id-ID", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                /{log.slug}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell max-w-[180px] truncate text-xs text-muted-foreground">
+                              {log.targetUrl}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              {log.ip}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell max-w-[200px] truncate text-xs text-muted-foreground">
+                              {log.userAgent}
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell max-w-[120px] truncate text-xs text-muted-foreground">
+                              {log.referer}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -794,13 +811,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
       {/* DIALOG MODAL: TAMBAH / EDIT WEB / APP */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg max-h-[88vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
               {editingId ? "Edit Web / App Perkuliahan" : "Tambah Web / App Baru"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Daftarkan layanan perkuliahan baru atau ubah direct route ke target URL yang diinginkan.
+              Daftarkan layanan perkuliahan baru atau ubah direct route & mode akses yang diinginkan.
             </DialogDescription>
           </DialogHeader>
 
@@ -831,7 +848,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                   Direct Path / Slug (<span className="text-muted-foreground">/:slug</span>)
                 </Label>
                 <div className="flex items-center">
-                  <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-input bg-muted px-2.5 text-xs text-muted-foreground">
+                  <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-input bg-muted px-2.5 text-xs text-muted-foreground shrink-0">
                     st.ten.my.id/
                   </span>
                   <Input
@@ -862,7 +879,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
             <div className="space-y-1.5">
               <Label htmlFor="targetUrl" className="text-xs font-medium">
-                Target URL (Tujuan Redirect)
+                Target URL (Tujuan Aplikasi)
               </Label>
               <Input
                 id="targetUrl"
@@ -873,6 +890,46 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 onChange={(e) => setTargetUrl(e.target.value)}
                 required
               />
+            </div>
+
+            {/* Mode Akses (Direct vs Embed) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">
+                Mode Akses Path (<span className="font-mono text-muted-foreground">st.ten.my.id/:slug</span>)
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={accessMode === "redirect" ? "default" : "outline"}
+                  size="sm"
+                  className="flex flex-col items-start h-auto p-2.5 text-left text-xs gap-0.5"
+                  onClick={() => setAccessMode("redirect")}
+                >
+                  <div className="flex items-center gap-1 font-semibold">
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Direct Redirect</span>
+                  </div>
+                  <span className="text-[10px] opacity-80 font-normal">
+                    Pengunjung langsung diarahkan ke target URL.
+                  </span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant={accessMode === "embed" ? "default" : "outline"}
+                  size="sm"
+                  className="flex flex-col items-start h-auto p-2.5 text-left text-xs gap-0.5"
+                  onClick={() => setAccessMode("embed")}
+                >
+                  <div className="flex items-center gap-1 font-semibold">
+                    <Monitor className="h-3.5 w-3.5 text-blue-500" />
+                    <span>Tetap di Path</span>
+                  </div>
+                  <span className="text-[10px] opacity-80 font-normal">
+                    Tampil tersemat di path st.ten.my.id/:slug.
+                  </span>
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -925,7 +982,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               <Textarea
                 id="description"
                 placeholder="Jelaskan fungsi atau materi yang disediakan oleh aplikasi ini..."
-                className="h-20 text-xs"
+                className="h-16 text-xs"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -947,7 +1004,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               />
             </div>
 
-            <DialogFooter className="pt-3">
+            <DialogFooter className="pt-2 sm:pt-3">
               <Button
                 type="button"
                 variant="outline"

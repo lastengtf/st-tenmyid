@@ -27,8 +27,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, name, slug, targetUrl, description, category, icon, isActive, sortOrder } =
-      body;
+    const {
+      id,
+      name,
+      slug,
+      targetUrl,
+      description,
+      category,
+      icon,
+      isActive,
+      accessMode,
+      sortOrder,
+    } = body;
 
     if (!name || !slug || !targetUrl) {
       return NextResponse.json(
@@ -46,6 +56,7 @@ export async function POST(request: Request) {
       category: category || "Umum",
       icon: icon || "ExternalLink",
       isActive: isActive !== false,
+      accessMode: accessMode === "embed" ? "embed" : "redirect",
       sortOrder: Number(sortOrder) || 0,
     });
 
